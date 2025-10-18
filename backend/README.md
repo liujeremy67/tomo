@@ -1,12 +1,13 @@
 Tomo MVP Backend
 
-Minimal Go (Golang) backend for the **Tomo Pomodoro app** MVP.  
-Built using the **Gin** framework and **Postgres** (via GORM or native SQL).  
+Minimal Go (Golang) backend for the Tomo MVP.  
+Built containerized via Postgres (manual SQL implementations).
 Simplicity, local development, and realistic foundations before cloud scaling.
 
 ---
 
 ## Starting Folder Structure
+```
 backend/
 ├── main.go
 ├── go.mod
@@ -26,6 +27,7 @@ backend/
 │
 ├── sql/
 │   └── schema.sql             # Raw SQL schema (User + Session tables)
+```
 
 ## Folder Purpose
 
