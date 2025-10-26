@@ -8,21 +8,21 @@ import (
 	"login-auth-template/middleware"
 )
 
-// SETS ALL ROUTES, RETURNS ServeMux
+// NewRouter sets all routes and returns ServeMux
 func NewRouter(db *sql.DB) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	// init handlers with shared db conn
+	// Initialize handlers with shared db connection
 	authHandler := &handlers.AuthHandler{DB: db}
 	userHandler := &handlers.UserHandler{DB: db}
 
 	// --- PUBLIC ROUTES ---
-	mux.HandleFunc("/register", authHandler.Register)
-	mux.HandleFunc("/login", authHandler.Login)
+	mux.HandleFunc("POST /register", authHandler.Register)
+	mux.HandleFunc("POST /login", authHandler.Login)
 
-	// --- PROTECTED ROUTES (req auth) ---
-	mux.Handle("/me", middleware.AuthMiddleware(http.HandlerFunc(userHandler.GetMe)))
-	mux.Handle("/me/delete", middleware.AuthMiddleware(http.HandlerFunc(userHandler.DeleteMe)))
+	// --- PROTECTED ROUTES (require auth) ---
+	mux.Handle("GET /me", middleware.AuthMiddleware(http.HandlerFunc(userHandler.GetMe)))
+	mux.Handle("DELETE /me", middleware.AuthMiddleware(http.HandlerFunc(userHandler.DeleteMe)))
 
 	return mux
 }
