@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -13,7 +12,12 @@ import (
 // look into context later
 type contextKey string
 
-const userContextKey = contextKey("user")
+const UserContextKey = contextKey("user")
+
+type UserClaims struct {
+	UserID int
+	Email  string
+}
 
 // AuthMiddleware validates JWTs for protected routes
 func AuthMiddleware(next http.Handler) http.Handler {
@@ -40,27 +44,18 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Optional: extract useful info from claims
-		userData := map[string]interface{}{
-			"user_id": (*claims)["sub"],
-			"email":   (*claims)["email"],
+		user := UserClaims{
+			UserID: int((*claims)["sub"].(float64)), // JWT numbers decode as float64
+			Email:  (*claims)["email"].(string),
 		}
 
-		// Attach claims to context for use by handlers
-		ctx := context.WithValue(r.Context(), userContextKey, userData)
+		ctx := context.WithValue(r.Context(), UserContextKey, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 // Helper to extract user info from context
 func GetUserFromContext(r *http.Request) (map[string]interface{}, bool) {
-	user, ok := r.Context().Value(userContextKey).(map[string]interface{})
+	user, ok := r.Context().Value(UserContextKey).(map[string]interface{})
 	return user, ok
-}
-
-// Optional: JSON helper (for consistent responses)
-func JSON(w http.ResponseWriter, data interface{}, status int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
 }
