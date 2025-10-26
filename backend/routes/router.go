@@ -17,8 +17,7 @@ func NewRouter(db *sql.DB) *http.ServeMux {
 	userHandler := &handlers.UserHandler{DB: db}
 
 	// --- PUBLIC ROUTES ---
-	mux.HandleFunc("POST /register", authHandler.Register)
-	mux.HandleFunc("POST /login", authHandler.Login)
+	mux.HandleFunc("POST /auth/google", authHandler.GoogleAuth)
 
 	// --- PROTECTED ROUTES (require auth) ---
 	mux.Handle("GET /me", middleware.AuthMiddleware(http.HandlerFunc(userHandler.GetMe)))

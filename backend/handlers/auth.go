@@ -4,84 +4,74 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"login-auth-template/models"
 	"login-auth-template/utils"
 )
 
-// go's encoding/json is type safe
-// define struct to match payload
-// lets us safely check shape
-type RegisterRequest struct {
-	Email    string `json:"email"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+type GoogleAuthRequest struct {
+	IDToken string `json:"id_token"`
 }
 
 // AuthHandler holds DB reference for handlers that need it
-// define this in main. lets you reuse connection
 type AuthHandler struct {
 	DB *sql.DB
 }
 
-// POST /register
-func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req RegisterRequest
+// POST /auth/google
+// Accepts Google ID token, verifies it, creates or logs in user
+func (h *AuthHandler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
+	var req GoogleAuthRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
-	// hashing
-	hash, err := utils.HashPassword(req.Password)
+	if req.IDToken == "" {
+		http.Error(w, "id_token is required", http.StatusBadRequest)
+		return
+	}
+
+	// Verify the Google token
+	googlePayload, err := utils.VerifyGoogleToken(r.Context(), req.IDToken)
 	if err != nil {
-		http.Error(w, "failed to hash password", http.StatusInternalServerError)
+		http.Error(w, "invalid or expired Google token", http.StatusUnauthorized)
 		return
 	}
 
-	// create users in db
-	user, err := models.CreateUser(h.DB, req.Email, req.Username, hash)
-	if err != nil {
-		http.Error(w, "failed to create user (email may already exist)", http.StatusBadRequest)
+	// Try to find existing user by Google ID
+	user, err := models.GetUserByGoogleID(h.DB, googlePayload.GoogleID)
+
+	if err == sql.ErrNoRows {
+		// User doesn't exist - create blank profile with just Google ID and email
+		user, err = models.CreateUser(h.DB, googlePayload.GoogleID, googlePayload.Email)
+		if err != nil {
+			// Check if email already exists with different Google ID
+			if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
+				http.Error(w, "email already registered with different account", http.StatusConflict)
+				return
+			}
+			http.Error(w, "failed to create user", http.StatusInternalServerError)
+			return
+		}
+	} else if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusCreated, user)
-}
-
-// POST /login
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-
-	// Look up user by email
-	user, err := models.GetUserByEmail(h.DB, req.Email)
-	if err != nil {
-		http.Error(w, "invalid email or password", http.StatusUnauthorized)
-		return
-	}
-
-	// Check password match
-	if !utils.CheckPassword(req.Password, user.PasswordHash) {
-		http.Error(w, "invalid email or password", http.StatusUnauthorized)
-		return
-	}
-
-	// Create JWT token
+	// Create JWT token for our application
 	token, err := utils.CreateToken(user.ID, user.Email, 24*time.Hour)
 	if err != nil {
-		http.Error(w, "failed to create token", http.StatusInternalServerError)
+		http.Error(w, "failed to create session token", http.StatusInternalServerError)
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+	// Return token and user info
+	response := map[string]interface{}{
+		"token": token,
+		"user":  user,
+	}
+	utils.WriteJSON(w, http.StatusOK, response)
 }

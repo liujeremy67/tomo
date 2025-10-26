@@ -21,19 +21,21 @@ Create a `.env.test` file from the `tests/` folder.
 Local example with dummy credentials:
 
 ```
-# .env.test (for local test Postgres)
-TEST_DB_HOST=localhost
-TEST_DB_PORT=5433
-TEST_DB_USER=testuser
-TEST_DB_PASSWORD=testpass
-TEST_DB_NAME=login_auth_template_test
-TEST_DB_SSLMODE=disable
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=password
+DB_NAME=auth_template
 
-# JWT secret for tests (stable/deterministic)
-JWT_SECRET=test
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRY_MINUTES=60
 
-APP_ENV=test
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+
+# Application Environment
+APP_ENV=development
 ```
 
 ---

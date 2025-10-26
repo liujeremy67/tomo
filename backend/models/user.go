@@ -7,22 +7,25 @@ import (
 
 // User represents a user in the database
 type User struct {
-	ID           int       `json:"id"`
-	Email        string    `json:"email"`
-	Username     string    `json:"username"`
-	PasswordHash string    `json:"-"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID          int       `json:"id"`
+	Email       string    `json:"email"`
+	Username    string    `json:"username,omitempty"`
+	GoogleID    string    `json:"google_id"`
+	DisplayName string    `json:"display_name,omitempty"`
+	PictureURL  string    `json:"picture_url,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
-// CREATE: inserts a new user into the DB
-func CreateUser(db *sql.DB, email, username, passwordHash string) (User, error) {
+// CREATE: inserts a new blank user with only Google ID and email
+func CreateUser(db *sql.DB, googleID, email string) (User, error) {
 	var user User
+
 	err := db.QueryRow(
-		`INSERT INTO users (email, username, password_hash, created_at)
-		 VALUES ($1, $2, $3, NOW())
-		 RETURNING id, email, username, password_hash, created_at`,
-		email, username, passwordHash,
-	).Scan(&user.ID, &user.Email, &user.Username, &user.PasswordHash, &user.CreatedAt)
+		`INSERT INTO users (email, google_id, created_at)
+		 VALUES ($1, $2, NOW())
+		 RETURNING id, email, username, google_id, display_name, picture_url, created_at`,
+		email, googleID,
+	).Scan(&user.ID, &user.Email, &user.Username, &user.GoogleID, &user.DisplayName, &user.PictureURL, &user.CreatedAt)
 	return user, err
 }
 
@@ -30,11 +33,23 @@ func CreateUser(db *sql.DB, email, username, passwordHash string) (User, error) 
 func GetUserByEmail(db *sql.DB, email string) (User, error) {
 	var user User
 	err := db.QueryRow(
-		`SELECT id, email, username, password_hash, created_at
+		`SELECT id, email, username, google_id, display_name, picture_url, created_at
 		 FROM users
 		 WHERE email=$1`,
 		email,
-	).Scan(&user.ID, &user.Email, &user.Username, &user.PasswordHash, &user.CreatedAt)
+	).Scan(&user.ID, &user.Email, &user.Username, &user.GoogleID, &user.DisplayName, &user.PictureURL, &user.CreatedAt)
+	return user, err
+}
+
+// READ: fetch a user by Google ID
+func GetUserByGoogleID(db *sql.DB, googleID string) (User, error) {
+	var user User
+	err := db.QueryRow(
+		`SELECT id, email, username, google_id, display_name, picture_url, created_at
+		 FROM users
+		 WHERE google_id=$1`,
+		googleID,
+	).Scan(&user.ID, &user.Email, &user.Username, &user.GoogleID, &user.DisplayName, &user.PictureURL, &user.CreatedAt)
 	return user, err
 }
 
@@ -42,11 +57,11 @@ func GetUserByEmail(db *sql.DB, email string) (User, error) {
 func GetUserByID(db *sql.DB, id int) (User, error) {
 	var user User
 	err := db.QueryRow(
-		`SELECT id, email, username, password_hash, created_at
+		`SELECT id, email, username, google_id, display_name, picture_url, created_at
 		 FROM users
 		 WHERE id=$1`,
 		id,
-	).Scan(&user.ID, &user.Email, &user.Username, &user.PasswordHash, &user.CreatedAt)
+	).Scan(&user.ID, &user.Email, &user.Username, &user.GoogleID, &user.DisplayName, &user.PictureURL, &user.CreatedAt)
 	return user, err
 }
 
@@ -72,13 +87,24 @@ func UpdateUsername(db *sql.DB, id int, newUsername string) error {
 	return err
 }
 
-// UPDATE: update user's password (expects hashed password)
-func UpdatePassword(db *sql.DB, id int, newPasswordHash string) error {
+// UPDATE: update user's profile picture
+func UpdatePictureURL(db *sql.DB, id int, pictureURL string) error {
 	_, err := db.Exec(
 		`UPDATE users
-		 SET password_hash=$1
+		 SET picture_url=$1
 		 WHERE id=$2`,
-		newPasswordHash, id,
+		pictureURL, id,
+	)
+	return err
+}
+
+// UPDATE: update user's display name
+func UpdateDisplayName(db *sql.DB, id int, displayName string) error {
+	_, err := db.Exec(
+		`UPDATE users
+		 SET display_name=$1
+		 WHERE id=$2`,
+		displayName, id,
 	)
 	return err
 }
