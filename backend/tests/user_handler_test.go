@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"login-auth-template/handlers"
+	"login-auth-template/middleware"
 	"login-auth-template/models"
 	"login-auth-template/utils"
 )
@@ -30,7 +31,12 @@ func TestUserHandler_GetAndDeleteMe(t *testing.T) {
 
 	// ---- Test GET /me ----
 	req := httptest.NewRequest("GET", "/me", nil)
-	ctx := context.WithValue(req.Context(), "user_id", user.ID) // simulate middleware
+	// Simulate middleware by setting UserClaims in context
+	userClaims := middleware.UserClaims{
+		UserID: user.ID,
+		Email:  user.Email,
+	}
+	ctx := context.WithValue(req.Context(), middleware.UserContextKey, userClaims)
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
@@ -41,7 +47,7 @@ func TestUserHandler_GetAndDeleteMe(t *testing.T) {
 
 	// ---- Test DELETE /me ----
 	req2 := httptest.NewRequest("DELETE", "/me", nil)
-	ctx2 := context.WithValue(req2.Context(), "user_id", user.ID)
+	ctx2 := context.WithValue(req2.Context(), middleware.UserContextKey, userClaims)
 	req2 = req2.WithContext(ctx2)
 	w2 := httptest.NewRecorder()
 
