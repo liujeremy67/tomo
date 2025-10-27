@@ -18,9 +18,11 @@ func NewRouter(db *sql.DB) *http.ServeMux {
 
 	// --- PUBLIC ROUTES ---
 	mux.HandleFunc("POST /auth/google", authHandler.GoogleAuth)
+	mux.HandleFunc("GET /users/{username}", userHandler.GetUserByUsername)
 
 	// --- PROTECTED ROUTES (require auth) ---
 	mux.Handle("GET /me", middleware.AuthMiddleware(http.HandlerFunc(userHandler.GetMe)))
+	mux.Handle("PATCH /me", middleware.AuthMiddleware(http.HandlerFunc(userHandler.UpdateMe)))
 	mux.Handle("DELETE /me", middleware.AuthMiddleware(http.HandlerFunc(userHandler.DeleteMe)))
 
 	return mux

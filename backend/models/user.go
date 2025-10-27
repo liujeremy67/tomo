@@ -65,6 +65,39 @@ func GetUserByID(db *sql.DB, id int) (User, error) {
 	return user, err
 }
 
+// READ: fetch a user by username
+func GetUserByUsername(db *sql.DB, username string) (User, error) {
+	var user User
+	err := db.QueryRow(
+		`SELECT id, email, username, google_id, display_name, picture_url, created_at
+		 FROM users
+		 WHERE username=$1`,
+		username,
+	).Scan(&user.ID, &user.Email, &user.Username, &user.GoogleID, &user.DisplayName, &user.PictureURL, &user.CreatedAt)
+	return user, err
+}
+
+// READ: check if a username already exists
+func UsernameExists(db *sql.DB, username string) (bool, error) {
+	var exists bool
+	err := db.QueryRow(
+		`SELECT EXISTS(SELECT 1 FROM users WHERE username=$1)`,
+		username,
+	).Scan(&exists)
+	return exists, err
+}
+
+// UPDATE: update user's profile (username, display_name, picture_url)
+func UpdateProfile(db *sql.DB, id int, username, displayName, pictureURL string) error {
+	_, err := db.Exec(
+		`UPDATE users
+		 SET username=$1, display_name=$2, picture_url=$3
+		 WHERE id=$4`,
+		username, displayName, pictureURL, id,
+	)
+	return err
+}
+
 // UPDATE: update user's email
 func UpdateUserEmail(db *sql.DB, id int, newEmail string) error {
 	_, err := db.Exec(
