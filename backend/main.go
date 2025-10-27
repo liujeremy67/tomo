@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"login-auth-template/config"
+	"tomo/backend/config"
 )
 
 func main() {

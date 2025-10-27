@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"net/http"
 
-	"login-auth-template/handlers"
-	"login-auth-template/middleware"
+	"tomo/backend/handlers"
+	"tomo/backend/middleware"
 )
 
 // NewRouter sets all routes and returns ServeMux

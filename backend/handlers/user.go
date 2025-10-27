@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"login-auth-template/middleware"
-	"login-auth-template/models"
-	"login-auth-template/utils"
+	"tomo/backend/middleware"
+	"tomo/backend/models"
+	"tomo/backend/utils"
 )
 
 type UserHandler struct {

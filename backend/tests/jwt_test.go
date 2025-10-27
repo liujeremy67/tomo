@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"login-auth-template/utils"
+	"tomo/backend/utils"
 )
 
 func TestJWTCreateAndValidate(t *testing.T) {

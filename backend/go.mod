@@ -1,4 +1,4 @@
-module login-auth-template
+module tomo/backend
 
 go 1.24.0
 

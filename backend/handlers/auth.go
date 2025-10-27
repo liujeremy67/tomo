@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"login-auth-template/models"
-	"login-auth-template/utils"
+	"tomo/backend/models"
+	"tomo/backend/utils"
 )
 
 type GoogleAuthRequest struct {
