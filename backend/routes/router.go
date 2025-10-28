@@ -21,7 +21,6 @@ func NewRouter(db *sql.DB) *http.ServeMux {
 	// --- PUBLIC ROUTES ---
 	mux.HandleFunc("POST /auth/google", authHandler.GoogleAuth)
 	mux.HandleFunc("GET /users/{username}", userHandler.GetUserByUsername)
-	mux.HandleFunc("GET /posts/public", postHandler.GetPublicPosts)
 
 	// --- PROTECTED ROUTES (require auth) ---
 	// User routes
