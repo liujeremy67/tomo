@@ -180,7 +180,7 @@ func (h *MediaHandler) UploadMediaFile(w http.ResponseWriter, r *http.Request) {
 	// TODO: Upload to S3/R2/Cloud Storage
 	// For now, return a placeholder URL
 	// In production, use AWS SDK or similar:
-	fileURL, err := utils.UploadToS3(fileBytes, header.Filename, mediaType)
+	fileURL, err := utils.UploadToS3(r.Context(), fileBytes, header.Filename, mediaType)
 	if err != nil {
 		http.Error(w, "failed to upload media", http.StatusInternalServerError)
 		return
