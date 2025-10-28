@@ -177,9 +177,6 @@ func (h *MediaHandler) UploadMediaFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Upload to S3/R2/Cloud Storage
-	// For now, return a placeholder URL
-	// In production, use AWS SDK or similar:
 	fileURL, err := utils.UploadToS3(r.Context(), fileBytes, header.Filename, mediaType)
 	if err != nil {
 		http.Error(w, "failed to upload media", http.StatusInternalServerError)
@@ -271,8 +268,7 @@ func (h *MediaHandler) DeleteMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Delete from S3/R2 as well
-	// deleteFromS3(media.FileURL)
+	// post handler deletes from s3!
 
 	if err := models.DeleteMedia(h.DB, mediaID); err != nil {
 		http.Error(w, "failed to delete media", http.StatusInternalServerError)

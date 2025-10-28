@@ -81,6 +81,7 @@ func UploadToS3(parentCtx context.Context, fileBytes []byte, filename, contentTy
 	}
 
 	// Define the object key (path in the bucket).
+	// CAN MAKE THIS CONFIGURABLE LATER TODO
 	key := fmt.Sprintf("uploads/%s", filename)
 
 	// 2. Upload the file. If the context times out, this call is canceled automatically.
@@ -98,4 +99,39 @@ func UploadToS3(parentCtx context.Context, fileBytes []byte, filename, contentTy
 	// 3. Construct and return the public URL.
 	publicURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key)
 	return publicURL, nil
+}
+
+// DeleteFromS3 deletes a file from the configured S3 bucket using its public URL.
+//
+// It first extracts the object key (e.g. "uploads/file.jpg") from the full URL,
+// then calls AWS S3's DeleteObject API.
+// The call respects a 20-second timeout and can be canceled if the HTTP request ends.
+func DeleteFromS3(parentCtx context.Context, fileURL string) error {
+	bucket := os.Getenv("S3_BUCKET_NAME")
+	if bucket == "" {
+		return fmt.Errorf("S3_BUCKET_NAME environment variable not set")
+	}
+
+	ctx, cancel := context.WithTimeout(parentCtx, 20*time.Second)
+	defer cancel()
+
+	svc, err := NewS3Client(ctx)
+	if err != nil {
+		return err
+	}
+
+	key, err := ExtractS3Key(fileURL)
+	if err != nil {
+		return err
+	}
+
+	_, err = svc.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete S3 object: %w", err)
+	}
+
+	return nil
 }

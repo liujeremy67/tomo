@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"tomo/backend/middleware"
 	"tomo/backend/models"
@@ -284,11 +287,16 @@ func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Delete media files from S3 before deleting post
-	// media, _ := models.GetMediaForPost(h.DB, postID)
-	// for _, m := range media {
-	//     deleteFromS3(m.FileURL)
-	// }
+	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	defer cancel()
+
+	// Delete media files from S3 before deleting post
+	media, _ := models.GetMediaForPost(h.DB, postID)
+	for _, m := range media {
+		if err := utils.DeleteFromS3(ctx, m.FileURL); err != nil {
+			log.Printf("failed to delete S3 file %s: %v", m.FileURL, err)
+		}
+	}
 
 	// Delete post (media rows cascade delete automatically)
 	if err := models.DeletePost(h.DB, postID); err != nil {
