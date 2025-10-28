@@ -17,6 +17,7 @@ func NewRouter(db *sql.DB) *http.ServeMux {
 	userHandler := &handlers.UserHandler{DB: db}
 	sessionHandler := &handlers.SessionHandler{DB: db}
 	postHandler := &handlers.PostHandler{DB: db}
+	mediaHandler := &handlers.MediaHandler{DB: db}
 
 	// --- PUBLIC ROUTES ---
 	mux.HandleFunc("POST /auth/google", authHandler.GoogleAuth)
@@ -40,6 +41,12 @@ func NewRouter(db *sql.DB) *http.ServeMux {
 	mux.Handle("GET /posts/{id}", middleware.AuthMiddleware(http.HandlerFunc(postHandler.GetPost)))
 	mux.Handle("PATCH /posts/{id}", middleware.AuthMiddleware(http.HandlerFunc(postHandler.UpdatePost)))
 	mux.Handle("DELETE /posts/{id}", middleware.AuthMiddleware(http.HandlerFunc(postHandler.DeletePost)))
+
+	// Media routes
+	mux.Handle("POST /posts/{id}/media", middleware.AuthMiddleware(http.HandlerFunc(mediaHandler.AddMediaToPost)))
+	mux.Handle("POST /posts/{id}/media/upload", middleware.AuthMiddleware(http.HandlerFunc(mediaHandler.UploadMediaFile)))
+	mux.Handle("GET /posts/{id}/media", middleware.AuthMiddleware(http.HandlerFunc(mediaHandler.GetPostMedia)))
+	mux.Handle("DELETE /media/{id}", middleware.AuthMiddleware(http.HandlerFunc(mediaHandler.DeleteMedia)))
 
 	return mux
 }

@@ -18,12 +18,6 @@ type Post struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
-// PostWithTags includes the post and its associated tags
-type PostWithTags struct {
-	Post
-	Tags []string `json:"tags,omitempty"`
-}
-
 // CREATE: insert a new post
 func CreatePost(db *sql.DB, userID int, sessionID *int, postType, content, title string, moodRating *int, visibility string) (Post, error) {
 	var post Post
@@ -52,7 +46,7 @@ func GetPostByID(db *sql.DB, postID int) (Post, error) {
 
 // READ: get all posts for a user (their personal journal view)
 // Returns posts with their tags
-func GetPostsByUserID(db *sql.DB, userID int, limit, offset int) ([]PostWithTags, error) {
+func GetPostsByUserID(db *sql.DB, userID int, limit, offset int) ([]PostWithDetails, error) {
 	rows, err := db.Query(
 		`SELECT id, user_id, session_id, post_type, content, title, mood_rating, visibility, created_at
 		 FROM posts
@@ -66,7 +60,7 @@ func GetPostsByUserID(db *sql.DB, userID int, limit, offset int) ([]PostWithTags
 	}
 	defer rows.Close()
 
-	var posts []PostWithTags
+	var posts []PostWithDetails // Change the slice type
 	for rows.Next() {
 		var post Post
 		if err := rows.Scan(&post.ID, &post.UserID, &post.SessionID, &post.PostType, &post.Content, &post.Title, &post.MoodRating, &post.Visibility, &post.CreatedAt); err != nil {
@@ -79,9 +73,17 @@ func GetPostsByUserID(db *sql.DB, userID int, limit, offset int) ([]PostWithTags
 			return nil, err
 		}
 
-		posts = append(posts, PostWithTags{
-			Post: post,
-			Tags: tags,
+		// ADD MEDIA FETCH (Crucial for PostWithDetails)
+		media, err := GetMediaForPost(db, post.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		// Populate PostWithDetails
+		posts = append(posts, PostWithDetails{
+			Post:  post,
+			Tags:  tags,
+			Media: media,
 		})
 	}
 
@@ -100,7 +102,51 @@ func GetPostBySessionID(db *sql.DB, sessionID int) (Post, error) {
 	return post, err
 }
 
-// UPDATE: update a post's content
+// READ: get all public posts (for community/social features)
+func GetPublicPosts(db *sql.DB, limit, offset int) ([]PostWithDetails, error) {
+	rows, err := db.Query(
+		`SELECT id, user_id, session_id, post_type, content, title, mood_rating, visibility, created_at
+		 FROM posts
+		 WHERE visibility='public'
+		 ORDER BY created_at DESC
+		 LIMIT $1 OFFSET $2`,
+		limit, offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var posts []PostWithDetails // Change the slice type
+	for rows.Next() {
+		var post Post
+		if err := rows.Scan(&post.ID, &post.UserID, &post.SessionID, &post.PostType, &post.Content, &post.Title, &post.MoodRating, &post.Visibility, &post.CreatedAt); err != nil {
+			return nil, err
+		}
+
+		tags, err := GetTagsForPost(db, post.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		// ADD MEDIA FETCH (Crucial for PostWithDetails)
+		media, err := GetMediaForPost(db, post.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		// Populate PostWithDetails
+		posts = append(posts, PostWithDetails{
+			Post:  post,
+			Tags:  tags,
+			Media: media, // Add media field
+		})
+	}
+
+	return posts, rows.Err()
+}
+
+// UPDATE: update a post's content. CANNOT UPDATE MEDIA
 func UpdatePost(db *sql.DB, postID int, content, title string, moodRating *int, visibility string) error {
 	_, err := db.Exec(
 		`UPDATE posts
@@ -171,4 +217,59 @@ func AddTagsToPost(db *sql.DB, userID, postID int, tagNames []string) error {
 		}
 	}
 	return nil
+}
+
+// PostWithDetails includes post, tags, and media
+type PostWithDetails struct {
+	Post
+	Tags  []string    `json:"tags,omitempty"`
+	Media []PostMedia `json:"media,omitempty"`
+}
+
+// Helper: get complete post with tags and media
+func GetPostWithDetails(db *sql.DB, postID int) (PostWithDetails, error) {
+	post, err := GetPostByID(db, postID)
+	if err != nil {
+		return PostWithDetails{}, err
+	}
+
+	tags, err := GetTagsForPost(db, postID)
+	if err != nil {
+		return PostWithDetails{}, err
+	}
+
+	media, err := GetMediaForPost(db, postID)
+	if err != nil {
+		return PostWithDetails{}, err
+	}
+
+	return PostWithDetails{
+		Post:  post,
+		Tags:  tags,
+		Media: media,
+	}, nil
+}
+
+// Helper: get posts with details for a user
+func GetPostsWithDetailsByUserID(db *sql.DB, userID int, limit, offset int) ([]PostWithDetails, error) {
+	posts, err := GetPostsByUserID(db, userID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	var postsWithDetails []PostWithDetails
+	for _, postWithTag := range posts {
+		media, err := GetMediaForPost(db, postWithTag.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		postsWithDetails = append(postsWithDetails, PostWithDetails{
+			Post:  postWithTag.Post,
+			Tags:  postWithTag.Tags,
+			Media: media,
+		})
+	}
+
+	return postsWithDetails, nil
 }

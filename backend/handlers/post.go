@@ -16,13 +16,13 @@ type PostHandler struct {
 }
 
 type CreatePostRequest struct {
-	SessionID  *int     `json:"session_id,omitempty"` // NULL for general posts
-	PostType   string   `json:"post_type"`            // 'session' or 'general'
+	SessionID  *int     `json:"session_id,omitempty"`
+	PostType   string   `json:"post_type"`
 	Content    string   `json:"content,omitempty"`
 	Title      string   `json:"title,omitempty"`
-	MoodRating *int     `json:"mood_rating,omitempty"` // 1-5
-	Visibility string   `json:"visibility"`            // 'private' or 'public'
-	Tags       []string `json:"tags,omitempty"`        // Optional tags
+	MoodRating *int     `json:"mood_rating,omitempty"`
+	Visibility string   `json:"visibility"`
+	Tags       []string `json:"tags,omitempty"`
 }
 
 // POST /posts — create a new reflection post
@@ -93,19 +93,17 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Fetch tags to include in response
-	tags, _ := models.GetTagsForPost(h.DB, post.ID)
-
-	response := models.PostWithTags{
-		Post: post,
-		Tags: tags,
+	// Fetch complete post with tags and media (media will be empty for new posts)
+	postDetails, err := models.GetPostWithDetails(h.DB, post.ID)
+	if err != nil {
+		http.Error(w, "failed to fetch post details", http.StatusInternalServerError)
+		return
 	}
 
-	utils.WriteJSON(w, http.StatusCreated, response)
+	utils.WriteJSON(w, http.StatusCreated, postDetails)
 }
 
-// GET /posts/user/{id} — get all posts for a specific user (personal journal view)
-// Only the authenticated user can view their own private posts
+// GET /posts/user/{id} — get all posts for a specific user
 func (h *PostHandler) GetUserPosts(w http.ResponseWriter, r *http.Request) {
 	authUser, ok := r.Context().Value(middleware.UserContextKey).(middleware.UserClaims)
 	if !ok {
@@ -130,7 +128,8 @@ func (h *PostHandler) GetUserPosts(w http.ResponseWriter, r *http.Request) {
 	limit := 20
 	offset := 0
 
-	posts, err := models.GetPostsByUserID(h.DB, userID, limit, offset)
+	// Get posts with full details (tags + media)
+	posts, err := models.GetPostsWithDetailsByUserID(h.DB, userID, limit, offset)
 	if err != nil {
 		http.Error(w, "failed to fetch posts", http.StatusInternalServerError)
 		return
@@ -142,7 +141,7 @@ func (h *PostHandler) GetUserPosts(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /posts/{id} — get a specific post by ID
+// GET /posts/{id} — get a specific post by ID (with tags and media)
 func (h *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value(middleware.UserContextKey).(middleware.UserClaims)
 	if !ok {
@@ -173,19 +172,14 @@ func (h *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get tags
-	tags, err := models.GetTagsForPost(h.DB, postID)
+	// Get complete post with tags and media
+	postDetails, err := models.GetPostWithDetails(h.DB, postID)
 	if err != nil {
-		http.Error(w, "failed to fetch tags", http.StatusInternalServerError)
+		http.Error(w, "failed to fetch post details", http.StatusInternalServerError)
 		return
 	}
 
-	response := models.PostWithTags{
-		Post: post,
-		Tags: tags,
-	}
-
-	utils.WriteJSON(w, http.StatusOK, response)
+	utils.WriteJSON(w, http.StatusOK, postDetails)
 }
 
 // PATCH /posts/{id} — update a post
@@ -249,23 +243,17 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get updated post
-	updatedPost, err := models.GetPostByID(h.DB, postID)
+	// Get updated post with details
+	postDetails, err := models.GetPostWithDetails(h.DB, postID)
 	if err != nil {
 		http.Error(w, "failed to fetch updated post", http.StatusInternalServerError)
 		return
 	}
 
-	tags, _ := models.GetTagsForPost(h.DB, postID)
-	response := models.PostWithTags{
-		Post: updatedPost,
-		Tags: tags,
-	}
-
-	utils.WriteJSON(w, http.StatusOK, response)
+	utils.WriteJSON(w, http.StatusOK, postDetails)
 }
 
-// DELETE /posts/{id} — delete a post
+// DELETE /posts/{id} — delete a post (media cascade deletes automatically)
 func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value(middleware.UserContextKey).(middleware.UserClaims)
 	if !ok {
@@ -296,6 +284,13 @@ func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: Delete media files from S3 before deleting post
+	// media, _ := models.GetMediaForPost(h.DB, postID)
+	// for _, m := range media {
+	//     deleteFromS3(m.FileURL)
+	// }
+
+	// Delete post (media rows cascade delete automatically)
 	if err := models.DeletePost(h.DB, postID); err != nil {
 		http.Error(w, "failed to delete post", http.StatusInternalServerError)
 		return
