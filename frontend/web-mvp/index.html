@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tomo MVP Control Panel</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <h1>Tomo MVP Control Panel</h1>
+        <p class="subtitle">
+          Manually exercise the backend routes for focus sessions while we build
+          the production client.
+        </p>
+      </header>
+
+      <section class="card">
+        <h2>API &amp; Auth</h2>
+        <div class="form-row">
+          <label for="base-url">API base URL</label>
+          <input id="base-url" type="url" placeholder="http://localhost:8080" />
+        </div>
+        <div class="form-row">
+          <label for="token">JWT access token</label>
+          <textarea
+            id="token"
+            rows="3"
+            placeholder="Paste a token issued by the backend"
+          ></textarea>
+        </div>
+        <div class="form-actions">
+          <button id="save-settings">Save settings</button>
+          <button id="clear-settings" class="secondary">Clear</button>
+          <button id="check-auth" class="secondary">Check /me</button>
+        </div>
+        <p class="hint">
+          Settings persist in localStorage so you can refresh without losing the
+          token.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Focus Session Timer</h2>
+        <p id="timer-status" class="status">Status: idle</p>
+        <div class="timer-display">
+          <span id="timer-display">00:00:00</span>
+        </div>
+        <div class="form-actions">
+          <button id="start-timer">Start Session</button>
+          <button id="stop-timer" class="danger" disabled>Stop &amp; Save</button>
+          <button id="cancel-timer" class="secondary" disabled>Cancel</button>
+        </div>
+        <p class="hint">
+          When you stop the timer we POST to <code>/sessions</code> using the
+          timestamps captured here.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>My Sessions</h2>
+        <div class="form-actions">
+          <button id="refresh-sessions">Refresh Sessions</button>
+        </div>
+        <div id="stats" class="stats"></div>
+        <ul id="session-list" class="session-list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Response Log</h2>
+        <div id="log" class="log"></div>
+      </section>
+    </main>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
